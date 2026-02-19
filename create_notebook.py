@@ -1,0 +1,289 @@
+
+import json
+import os
+
+notebook_content = {
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# PVELAD Faster R-CNN Training Pipeline\n",
+    "\n",
+    "This notebook orchestrates the training using modular components:\n",
+    "- `voc_utils.py`: Logging and metrics\n",
+    "- `voc_aug.py`: Adaptive Augmentation\n",
+    "- `voc_dataset.py`: VOC Dataset loading\n",
+    "\n",
+    "Configuration, Model Definition, and Training Engine are defined here for easy customization."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": None,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import torch\n",
+    "import numpy as np\n",
+    "import random\n",
+    "import math\n",
+    "import logging\n",
+    "import matplotlib.pyplot as plt\n",
+    "from pathlib import Path\n",
+    "from dataclasses import dataclass, field\n",
+    "from typing import List, Dict, Optional\n",
+    "from collections import defaultdict\n",
+    "\n",
+    "import torchvision\n",
+    "from torchvision.models.detection.faster_rcnn import FastRCNNPredictor\n",
+    "from torch.utils.data import DataLoader, WeightedRandomSampler\n",
+    "import torch.optim as optim\n",
+    "\n",
+    "from rich.console import Console\n",
+    "from rich.panel import Panel\n",
+    "from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, MofNCompleteColumn, TimeRemainingColumn\n",
+    "\n",
+    "# Local Imports\n",
+    "from voc_utils import setup_rich_logging, MetricLogger, collate_fn\n",
+    "from voc_dataset import VOCSplitManager, VOCDataset\n",
+    "from voc_aug import AdaptiveAugmentation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": None,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Setup Logging\n",
+    "logger = setup_rich_logging()\n",
+    "console = Console()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. Configuration"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": None,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "@dataclass\n",
+    "class VOCConfig:\n",
+    "    \"\"\"Central configuration for VOC dataset.\"\"\"\n",
+    "    data_root: str = \"trainval\" # Default relative path for Kaggle\n",
+    "    img_size: int = 512\n",
+    "    mean: List[float] = field(default_factory=lambda: [0.485, 0.456, 0.406])\n",
+    "    std: List[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])\n",
+    "    seed: int = 42\n",
+    "    num_workers: int = 2 # Reduced for stability\n",
+    "    models_dir: Path = Path(\"models\")\n",
+    "    \n",
+    "    def __post_init__(self):\n",
+    "        self.data_root = Path(self.data_root).resolve()\n",
+    "        self.images_dir = self.data_root / \"JPEGImages\"\n",
+    "        self.annotations_dir = self.data_root / \"Annotations\"\n",
+    "        self.splits_dir = self.data_root / \"ImageSets\" / \"Main\"\n",
+    "        self.models_dir.mkdir(exist_ok=True, parents=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. Model Definition"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": None,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def get_model(num_classes):\n",
+    "    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)\n",
+    "    in_features = model.roi_heads.box_predictor.cls_score.in_features\n",
+    "    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)\n",
+    "    return model"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. Training Engine"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": None,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def train_one_epoch(model, optimizer, data_loader, device, epoch):\n",
+    "    model.train()\n",
+    "    metric_logger = MetricLogger(delimiter=\"  \")\n",
+    "    all_losses = []\n",
+    "    \n",
+    "    progress = Progress(\n",
+    "        SpinnerColumn(),\n",
+    "        TextColumn(\"[progress.description]{task.description}\"),\n",
+    "        BarColumn(),\n",
+    "        TaskProgressColumn(),\n",
+    "        MofNCompleteColumn(),\n",
+    "        TimeRemainingColumn(),\n",
+    "        TextColumn(\"[bold blue]{task.fields[loss]}\"),\n",
+    "    )\n",
+    "    task_id = progress.add_task(f\"[cyan]Epoch {epoch} Training\", total=len(data_loader), loss=\"Loss: 0.0000\")\n",
+    "    \n",
+    "    with progress:\n",
+    "        for i, (images, targets) in enumerate(data_loader):\n",
+    "            images = list(image.to(device) for image in images)\n",
+    "            targets = [{k: v.to(device) for k, v in t.items() if k in ['boxes', 'labels']} for t in targets]\n",
+    "\n",
+    "            loss_dict = model(images, targets)\n",
+    "            losses = sum(loss for loss in loss_dict.values())\n",
+    "            \n",
+    "            if not math.isfinite(losses.item()):\n",
+    "                logger.error(f\"Loss is {losses.item()}, skipping batch\")\n",
+    "                continue\n",
+    "\n",
+    "            optimizer.zero_grad()\n",
+    "            losses.backward()\n",
+    "            optimizer.step()\n",
+    "\n",
+    "            all_losses.append(losses.item())\n",
+    "            progress.update(task_id, advance=1, loss=f\"Loss: {losses.item():.4f}\")\n",
+    "\n",
+    "    return np.mean(all_losses)\n",
+    "\n",
+    "def evaluate(model, data_loader, device):\n",
+    "    model.train() # Keep in train mode for loss calculation\n",
+    "    losses = []\n",
+    "    progress = Progress(\n",
+    "        SpinnerColumn(), TextColumn(\"[progress.description]{task.description}\"),\n",
+    "        BarColumn(), TaskProgressColumn(), MofNCompleteColumn()\n",
+    "    )\n",
+    "    task_id = progress.add_task(\"[green]Validating\", total=len(data_loader))\n",
+    "    \n",
+    "    with progress:\n",
+    "        with torch.no_grad():\n",
+    "            for images, targets in data_loader:\n",
+    "                images = list(image.to(device) for image in images)\n",
+    "                targets = [{k: v.to(device) for k, v in t.items() if k in ['boxes', 'labels']} for t in targets]\n",
+    "                loss_dict = model(images, targets)\n",
+    "                losses.append(sum(l.item() for l in loss_dict.values()))\n",
+    "                progress.update(task_id, advance=1)\n",
+    "    return np.mean(losses)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 4. Main Execution Pipeline"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": None,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# SETTINGS\n",
+    "EPOCHS = 15\n",
+    "BATCH_SIZE = 2 # Recommended for 3GB VRAM\n",
+    "\n",
+    "console.print(Panel.fit(\"[bold magenta]PVELAD Kaggle Pipeline[/bold magenta]\", border_style=\"magenta\"))\n",
+    "device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')\n",
+    "console.print(f\"[bold green]Using device:[/bold green] {device}\")\n",
+    "\n",
+    "# 1. Initialize Dataset\n",
+    "config = VOCConfig()\n",
+    "split_manager = VOCSplitManager(config, logger)\n",
+    "datasets = split_manager.create_splits()\n",
+    "train_dataset = datasets['train']\n",
+    "val_dataset = datasets['val']\n",
+    "\n",
+    "# 2. Class Balancing (WeightedRandomSampler)\n",
+    "class_counts = train_dataset.class_distribution\n",
+    "total_samples = sum(class_counts.values())\n",
+    "weight_per_class = {k: total_samples/(v+1e-6) for k,v in class_counts.items()}\n",
+    "\n",
+    "sample_weights = []\n",
+    "print(\"Calculating sample weights for balancing...\")\n",
+    "for i in range(len(train_dataset)):\n",
+    "     # Direct access to dataset for speed\n",
+    "     _, target = train_dataset[i]\n",
+    "     labels = target['labels']\n",
+    "     if len(labels) > 0:\n",
+    "         # Assign weight based on the max weight class present in image (boosts minority)\n",
+    "         weight = max([weight_per_class.get(train_dataset.inv_class_map.get(int(l),''), 0) for l in labels])\n",
+    "     else:\n",
+    "         weight = 0\n",
+    "     sample_weights.append(weight)\n",
+    "\n",
+    "num_classes = len(train_dataset.class_list) + 1\n",
+    "# Upsample to 1000 samples for quick testing or full size for real training\n",
+    "train_sampler = WeightedRandomSampler(sample_weights, len(train_dataset), replacement=True) \n",
+    "\n",
+    "# 3. Dataloaders\n",
+    "train_loader = DataLoader(train_dataset, BATCH_SIZE, sampler=train_sampler, collate_fn=collate_fn, num_workers=0)\n",
+    "val_loader = DataLoader(val_dataset, BATCH_SIZE, collate_fn=collate_fn, num_workers=0)\n",
+    "\n",
+    "# 4. Model Setup\n",
+    "model = get_model(num_classes).to(device)\n",
+    "optimizer = optim.AdamW(model.parameters(), lr=1e-4)\n",
+    "\n",
+    "# 5. Training Loop\n",
+    "best_val_loss = float('inf')\n",
+    "\n",
+    "for epoch in range(EPOCHS):\n",
+    "    train_loss = train_one_epoch(model, optimizer, train_loader, device, epoch)\n",
+    "    val_loss = evaluate(model, val_loader, device)\n",
+    "    \n",
+    "    console.print(f\"[bold]Epoch {epoch}[/bold] | Train: {train_loss:.4f} | Val: {val_loss:.4f}\")\n",
+    "    \n",
+    "    # Save Best Model\n",
+    "    if val_loss < best_val_loss:\n",
+    "        best_val_loss = val_loss\n",
+    "        torch.save(model.state_dict(), config.models_dir / \"best_model.pth\")\n",
+    "        console.print(f\"[green]New best model saved! (Val Loss: {val_loss:.4f})[/green]\")\n",
+    "        \n",
+    "    # Save Latest\n",
+    "    torch.save(model.state_dict(), config.models_dir / \"latest.pth\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
+
+with open("kaggle_train.ipynb", "w") as f:
+    json.dump(notebook_content, f, indent=1)

@@ -1,0 +1,44 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# Project Specific
+trainval/
+models/
+*.log
+voc_cache/
+output/
+wandb/
+.DS_Store
+Thumbs.db
+
+# Large files
+*.pth
+*.tar
+*.zip
