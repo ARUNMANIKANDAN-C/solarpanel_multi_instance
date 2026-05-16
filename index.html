@@ -5,32 +5,144 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FastViT vs MobileViTv2: Solar Panel Defect Detection</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 0; padding: 0; background: linear-gradient(135deg, #f7f9fc 0%, #eff6ff 100%); color: #1f2937; }
-    .container { max-width: 1024px; margin: 0 auto; padding: 32px 16px; }
-    h1 { color: #0f172a; margin-bottom: 8px; }
-    .subtitle { color: #64748b; font-size: 16px; margin-bottom: 32px; }
-    h2, h3 { color: #1e293b; }
-    .card { background: #ffffff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08); }
-    .card.highlight { border-left-color: #10b981; }
-    ul, ol { margin: 8px 0; padding-left: 24px; }
+    :root {
+      --bg-gradient: linear-gradient(135deg, #f7f9fc 0%, #eff6ff 100%);
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.5);
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --highlight: #10b981;
+      --table-border: #e2e8f0;
+      --table-header-bg: #f1f5f9;
+      --table-row-alt: #f8fafc;
+      --code-bg: #f1f5f9;
+      --badge-bg: #dbeafe;
+      --badge-text: #1e40af;
+      --shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+      --theme-toggle-bg: #e2e8f0;
+      --theme-toggle-fg: #0f172a;
+    }
+
+    [data-theme="dark"] {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      --card-bg: rgba(30, 41, 59, 0.75);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --accent: #60a5fa;
+      --accent-hover: #93c5fd;
+      --highlight: #34d399;
+      --table-border: #334155;
+      --table-header-bg: #1e293b;
+      --table-row-alt: #0f172a;
+      --code-bg: #0f172a;
+      --badge-bg: #1e3a8a;
+      --badge-text: #bfdbfe;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --theme-toggle-bg: #334155;
+      --theme-toggle-fg: #f8fafc;
+    }
+
+    * { box-sizing: border-box; transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      line-height: 1.6; 
+      margin: 0; 
+      padding: 0; 
+      background: var(--bg-gradient); 
+      color: var(--text-primary); 
+      min-height: 100vh;
+    }
+    
+    .container { max-width: 1024px; margin: 0 auto; padding: 48px 24px; position: relative; }
+    
+    header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .header-text { flex-grow: 1; }
+    h1 { color: var(--text-primary); margin: 0 0 12px 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; }
+    .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; font-weight: 400; }
+    h2 { color: var(--text-primary); font-size: 1.5rem; margin-top: 0; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    h3 { color: var(--text-primary); font-size: 1.25rem; }
+    
+    .card { 
+      background: var(--card-bg); 
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-left: 4px solid var(--accent); 
+      border-radius: 12px; 
+      padding: 32px; 
+      margin-bottom: 32px; 
+      box-shadow: var(--shadow); 
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 12px 48px rgba(0,0,0,0.12); }
+    .card.highlight { border-left-color: var(--highlight); }
+    
+    ul, ol { margin: 12px 0; padding-left: 24px; color: var(--text-secondary); }
     li { margin: 8px 0; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
-    th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
-    th { background: #f1f5f9; font-weight: 600; }
-    tr:nth-child(even) { background: #f8fafc; }
-    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; }
-    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-    .comparison-item { background: #f8fafc; padding: 16px; border-radius: 6px; border: 1px solid #e2e8f0; }
-    .comparison-item h4 { margin-top: 0; color: #0f172a; }
-    a { color: #3b82f6; text-decoration: none; font-weight: 500; }
-    a:hover { text-decoration: underline; }
-    .badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+    strong { color: var(--text-primary); }
+    
+    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 16px; border-radius: 8px; overflow: hidden; border: 1px solid var(--table-border); }
+    th, td { border-bottom: 1px solid var(--table-border); padding: 14px 16px; text-align: left; }
+    th { background: var(--table-header-bg); font-weight: 600; color: var(--text-primary); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) { background: var(--table-row-alt); }
+    
+    code, .code-block { background: var(--code-bg); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-family: 'Fira Code', 'Courier New', monospace; font-size: 0.9em; border: 1px solid var(--table-border); }
+    .code-block { display: block; padding: 16px; margin-top: 12px; overflow-x: auto; color: var(--text-primary); }
+    
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+    @media (max-width: 768px) { .comparison { grid-template-columns: 1fr; } }
+    .comparison-item { background: var(--table-row-alt); padding: 24px; border-radius: 12px; border: 1px solid var(--table-border); }
+    .comparison-item h4 { margin-top: 0; color: var(--accent); font-size: 1.2rem; }
+    
+    a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+    
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .badge { display: inline-flex; align-items: center; background: var(--badge-bg); color: var(--badge-text); padding: 6px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+    
+    /* Theme Toggle Button */
+    .theme-toggle {
+      background: var(--theme-toggle-bg);
+      color: var(--theme-toggle-fg);
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s ease, background 0.3s ease;
+      flex-shrink: 0;
+      margin-left: 24px;
+    }
+    .theme-toggle:hover { transform: scale(1.05); }
+    .theme-toggle:active { transform: scale(0.95); }
+    
+    .results-highlight { font-size: 1.5rem; font-weight: 700; color: var(--highlight); }
   </style>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
-    <h1>🔬 FastViT vs MobileViTv2</h1>
-    <p class="subtitle">Comparative Study of Efficient Architectures for Solar Panel Multi-Defect Detection</p>
+    <header>
+      <div class="header-text">
+        <h1>🔬 FastViT vs MobileViTv2</h1>
+        <div class="subtitle">Comparative Study of Efficient Architectures for Solar Panel Multi-Defect Detection</div>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+        🌓
+      </button>
+    </header>
 
     <div class="card highlight">
       <h2>Project Overview</h2>
@@ -39,12 +151,51 @@
         <strong>FastViT-T8</strong> (30M parameters, CNN-based) and <strong>MobileViTv2-100</strong> (21.7M parameters, CNN+Transformer hybrid)
         for detecting solar panel defects on the <strong>PV-Multi-Defect dataset</strong>.
       </p>
-      <p>
+      <div class="badges">
         <span class="badge">Object Detection</span>
         <span class="badge">Solar Panels</span>
         <span class="badge">Faster R-CNN</span>
         <span class="badge">Efficient Architectures</span>
-      </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏆 Experimental Results</h2>
+      <p>Performance on the test set comparing best epochs across the different model configurations:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Model Architecture</th>
+            <th>Variant</th>
+            <th>Notebook File</th>
+            <th>Best mAP@0.5</th>
+            <th>Best Epoch</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>FastViT</strong></td>
+            <td>FastViT-T8</td>
+            <td><code>base-template(1).ipynb</code></td>
+            <td><span class="results-highlight">0.8140</span></td>
+            <td>35</td>
+          </tr>
+          <tr>
+            <td><strong>MobileViTv2</strong></td>
+            <td>MobileViTv2-100</td>
+            <td><code>base-template-mobilevit.ipynb</code></td>
+            <td><span class="results-highlight">0.8508</span></td>
+            <td>16</td>
+          </tr>
+          <tr>
+            <td><strong>Faster R-CNN</strong></td>
+            <td>Augmented Base</td>
+            <td><code>augmented-fasterrcnn(1).ipynb</code></td>
+            <td><span class="results-highlight">0.8522</span></td>
+            <td>14</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="card">
@@ -86,7 +237,7 @@
       <div class="comparison">
         <div class="comparison-item">
           <h4>FastViT-T8</h4>
-          <ul style="margin-top: 12px; font-size: 13px;">
+          <ul>
             <li><strong>Type:</strong> Hybrid CNN + Structural Re-parameterization</li>
             <li><strong>Params:</strong> 29.97M (26.8M trainable)</li>
             <li><strong>Model Size:</strong> 16.3 MB</li>
@@ -100,7 +251,7 @@
         </div>
         <div class="comparison-item">
           <h4>MobileViTv2-100</h4>
-          <ul style="margin-top: 12px; font-size: 13px;">
+          <ul>
             <li><strong>Type:</strong> Hybrid CNN + Transformer (Linear Attention)</li>
             <li><strong>Params:</strong> 21.70M (17.3M trainable)</li>
             <li><strong>Model Size:</strong> 19.7 MB</li>
@@ -136,24 +287,16 @@
       <h2>🚀 Quick Start</h2>
       <ol>
         <li><strong>Install dependencies:</strong>
-          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
-            pip install -r requirements.txt
-          </div>
+          <div class="code-block">pip install -r requirements.txt</div>
         </li>
         <li><strong>Run FastViT notebook:</strong>
-          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
-            jupyter notebook base-template(1).ipynb
-          </div>
+          <div class="code-block">jupyter notebook base-template(1).ipynb</div>
         </li>
         <li><strong>Or run MobileViTv2 notebook:</strong>
-          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
-            jupyter notebook base-template-mobilevit.ipynb
-          </div>
+          <div class="code-block">jupyter notebook base-template-mobilevit.ipynb</div>
         </li>
         <li><strong>Or run via command line:</strong>
-          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
-            python main.py --epochs 200 --batch_size 16
-          </div>
+          <div class="code-block">python main.py --epochs 200 --batch_size 16</div>
         </li>
       </ol>
     </div>
@@ -161,7 +304,8 @@
     <div class="card">
       <h2>📈 Key Research Insights</h2>
       <ul>
-        <li><strong>Efficient Architectures:</strong> Both models achieve <200 epochs with <30M parameters for real-time solar panel inspection on edge devices.</li>
+        <li><strong>Efficient Architectures:</strong> Both models achieve &lt;200 epochs with &lt;30M parameters for real-time solar panel inspection on edge devices.</li>
+        <li><strong>Performance:</strong> Both models achieve high accuracy (mAP > 0.81), with the augmented base Faster R-CNN reaching the highest mAP of 0.8522.</li>
         <li><strong>Architecture Trade-offs:</strong> FastViT prioritizes rich local feature extraction; MobileViTv2 adds global context via transformers.</li>
         <li><strong>Class Imbalance:</strong> FastViT relies on augmentation; MobileViTv2 uses explicit class weighting for severe imbalance (hot_spot overrepresented).</li>
         <li><strong>Transfer Learning:</strong> Stage-wise unfreezing enables effective fine-tuning from ImageNet pretraining.</li>
@@ -169,10 +313,41 @@
       </ul>
     </div>
 
-    <div class="card">
+    <div class="card" style="margin-bottom: 0;">
       <h2>📝 License</h2>
-      <p>MIT License</p>
+      <p style="margin: 0; color: var(--text-secondary);">MIT License</p>
     </div>
   </div>
+
+  <script>
+    const themeToggle = document.getElementById('theme-toggle');
+    const root = document.documentElement;
+    
+    // Check for saved theme or user preference
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      root.setAttribute('data-theme', 'dark');
+      themeToggle.textContent = '☀️';
+    } else {
+      root.setAttribute('data-theme', 'light');
+      themeToggle.textContent = '🌙';
+    }
+    
+    // Toggle theme
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = root.getAttribute('data-theme');
+      if (currentTheme === 'dark') {
+        root.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+        themeToggle.textContent = '🌙';
+      } else {
+        root.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+        themeToggle.textContent = '☀️';
+      }
+    });
+  </script>
 </body>
 </html>

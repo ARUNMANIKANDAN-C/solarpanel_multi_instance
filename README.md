@@ -149,9 +149,15 @@ Both models report on test set:
    python main.py --epochs 200 --batch_size 16
    ```
 
-## 📊 Expected Metrics
+## 📊 Experimental Results
 
-Both models report:
+| Model Architecture | Variant | Best mAP@0.5 | Best Epoch | Notebook File |
+|--------------------|---------|--------------|------------|---------------|
+| **FastViT** | FastViT-T8 | 0.8140 | 35 | `base-template(1).ipynb` |
+| **MobileViTv2** | MobileViTv2-100 | 0.8508 | 16 | `base-template-mobilevit.ipynb` |
+| **Faster R-CNN** | Augmented Base | 0.8522 | 14 | `augmented-fasterrcnn(1).ipynb` |
+
+Both models were evaluated on the test set for:
 - **Precision, Recall, F1** (class-wise & overall)
 - **mAP@0.5** (mean Average Precision at IoU=0.5)
 - **Per-class performance** accounting for severe class imbalance
