@@ -155,7 +155,7 @@ Both models report on test set:
 |--------------------|---------|--------------|------------|---------------|
 | **FastViT** | FastViT-T8 | 0.8140 | 35 | `base-template(1).ipynb` |
 | **MobileViTv2** | MobileViTv2-100 | 0.8508 | 16 | `base-template-mobilevit.ipynb` |
-| **Faster R-CNN** | Augmented Base | 0.8522 | 14 | `augmented-fasterrcnn(1).ipynb` |
+| **Faster R-CNN** | Augmented Base | 0.7707 | 14 | `augmented-fasterrcnn(1).ipynb` |
 
 Both models were evaluated on the test set for:
 - **Precision, Recall, F1** (class-wise & overall)
