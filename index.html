@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastViT vs MobileViTv2: Solar Panel Defect Detection</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 0; padding: 0; background: linear-gradient(135deg, #f7f9fc 0%, #eff6ff 100%); color: #1f2937; }
+    .container { max-width: 1024px; margin: 0 auto; padding: 32px 16px; }
+    h1 { color: #0f172a; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 16px; margin-bottom: 32px; }
+    h2, h3 { color: #1e293b; }
+    .card { background: #ffffff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08); }
+    .card.highlight { border-left-color: #10b981; }
+    ul, ol { margin: 8px 0; padding-left: 24px; }
+    li { margin: 8px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+    th { background: #f1f5f9; font-weight: 600; }
+    tr:nth-child(even) { background: #f8fafc; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; }
+    .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .comparison-item { background: #f8fafc; padding: 16px; border-radius: 6px; border: 1px solid #e2e8f0; }
+    .comparison-item h4 { margin-top: 0; color: #0f172a; }
+    a { color: #3b82f6; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 FastViT vs MobileViTv2</h1>
+    <p class="subtitle">Comparative Study of Efficient Architectures for Solar Panel Multi-Defect Detection</p>
+
+    <div class="card highlight">
+      <h2>Project Overview</h2>
+      <p>
+        This research repository implements a modular <strong>Faster R-CNN</strong> pipeline comparing two efficient architectures:
+        <strong>FastViT-T8</strong> (30M parameters, CNN-based) and <strong>MobileViTv2-100</strong> (21.7M parameters, CNN+Transformer hybrid)
+        for detecting solar panel defects on the <strong>PV-Multi-Defect dataset</strong>.
+      </p>
+      <p>
+        <span class="badge">Object Detection</span>
+        <span class="badge">Solar Panels</span>
+        <span class="badge">Faster R-CNN</span>
+        <span class="badge">Efficient Architectures</span>
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>📊 Dataset & Preprocessing</h2>
+      <table>
+        <tr>
+          <th>Aspect</th>
+          <th>Details</th>
+        </tr>
+        <tr>
+          <td><strong>Images</strong></td>
+          <td>1,106 images with 3,981 annotated objects</td>
+        </tr>
+        <tr>
+          <td><strong>Defect Classes</strong></td>
+          <td>Scratch, Black Border, No Electricity, Hot Spot, Broken</td>
+        </tr>
+        <tr>
+          <td><strong>Augmentation</strong></td>
+          <td>FixedAugmenter: flip, brightness, contrast, noise, blur, HSV, rotation, scaling, translation, cutout (11 techniques)</td>
+        </tr>
+        <tr>
+          <td><strong>Target Balance</strong></td>
+          <td>9,000 samples per class (augmentation-based balancing)</td>
+        </tr>
+        <tr>
+          <td><strong>Train/Val/Test</strong></td>
+          <td>70% / 15% / 15% split</td>
+        </tr>
+        <tr>
+          <td><strong>Training Config</strong></td>
+          <td>200 epochs, batch_size=16, lr=1e-4, AdamW optimizer</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>🏗️ Architecture Comparison</h2>
+      <div class="comparison">
+        <div class="comparison-item">
+          <h4>FastViT-T8</h4>
+          <ul style="margin-top: 12px; font-size: 13px;">
+            <li><strong>Type:</strong> Hybrid CNN + Structural Re-parameterization</li>
+            <li><strong>Params:</strong> 29.97M (26.8M trainable)</li>
+            <li><strong>Model Size:</strong> 16.3 MB</li>
+            <li><strong>FPN:</strong> 4-level standard FPN</li>
+            <li><strong>Detail Block:</strong> 6-branch (k=7,9,11,13,H,V)</li>
+            <li><strong>Attention:</strong> CoordAtt + SE + CBAM</li>
+            <li><strong>Anchors:</strong> Single per level</li>
+            <li><strong>Class Balance:</strong> Via augmentation</li>
+            <li><strong>Unfreezing:</strong> Gradual (25 epochs)</li>
+          </ul>
+        </div>
+        <div class="comparison-item">
+          <h4>MobileViTv2-100</h4>
+          <ul style="margin-top: 12px; font-size: 13px;">
+            <li><strong>Type:</strong> Hybrid CNN + Transformer (Linear Attention)</li>
+            <li><strong>Params:</strong> 21.70M (17.3M trainable)</li>
+            <li><strong>Model Size:</strong> 19.7 MB</li>
+            <li><strong>FPN:</strong> 3-level BiFPN with parallel branches</li>
+            <li><strong>Detail Block:</strong> 3-branch (k=7,11,13)</li>
+            <li><strong>Attention:</strong> Spatial + CBAM + WeightedAdd</li>
+            <li><strong>Anchors:</strong> Paired per level (extreme AR)</li>
+            <li><strong>Class Balance:</strong> WeightedRoIHeads + loss weighting</li>
+            <li><strong>Unfreezing:</strong> Fast (20 epochs)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📂 Repository Contents</h2>
+      <ul>
+        <li><strong>base-template(1).ipynb</strong> — FastViT-T8 implementation</li>
+        <li><strong>base-template-mobilevit.ipynb</strong> — MobileViTv2-100 implementation</li>
+        <li><strong>augmented-fasterrcnn.ipynb</strong> — Augmentation analysis and visualization</li>
+        <li><strong>kaggle_train.ipynb</strong> — Training and evaluation workflow</li>
+        <li><strong>voc_dataset.py</strong> — VOC XML dataset parser</li>
+        <li><strong>voc_aug.py</strong> — FixedAugmenter implementation</li>
+        <li><strong>voc_utils.py</strong> — Dataset utilities and helpers</li>
+        <li><strong>train.py</strong> — Training loop and metrics computation</li>
+        <li><strong>main.py</strong> — Script entry point</li>
+        <li><strong>requirements.txt</strong> — Python dependencies</li>
+        <li><strong>wakthrough.md</strong> — Detailed architecture analysis</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>🚀 Quick Start</h2>
+      <ol>
+        <li><strong>Install dependencies:</strong>
+          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
+            pip install -r requirements.txt
+          </div>
+        </li>
+        <li><strong>Run FastViT notebook:</strong>
+          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
+            jupyter notebook base-template(1).ipynb
+          </div>
+        </li>
+        <li><strong>Or run MobileViTv2 notebook:</strong>
+          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
+            jupyter notebook base-template-mobilevit.ipynb
+          </div>
+        </li>
+        <li><strong>Or run via command line:</strong>
+          <div style="background: #f1f5f9; padding: 12px; border-radius: 4px; margin-top: 8px; font-family: monospace; font-size: 13px;">
+            python main.py --epochs 200 --batch_size 16
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>📈 Key Research Insights</h2>
+      <ul>
+        <li><strong>Efficient Architectures:</strong> Both models achieve <200 epochs with <30M parameters for real-time solar panel inspection on edge devices.</li>
+        <li><strong>Architecture Trade-offs:</strong> FastViT prioritizes rich local feature extraction; MobileViTv2 adds global context via transformers.</li>
+        <li><strong>Class Imbalance:</strong> FastViT relies on augmentation; MobileViTv2 uses explicit class weighting for severe imbalance (hot_spot overrepresented).</li>
+        <li><strong>Transfer Learning:</strong> Stage-wise unfreezing enables effective fine-tuning from ImageNet pretraining.</li>
+        <li><strong>Modular Design:</strong> Shared preprocessing pipeline enables fair architectural comparison.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>📝 License</h2>
+      <p>MIT License</p>
+    </div>
+  </div>
+</body>
+</html>
