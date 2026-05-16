@@ -64,6 +64,51 @@ Both models share an identical data preprocessing and augmentation pipeline but 
 | **Class Imbalance Handling** | Data augmentation only | Explicit class weighting |
 | **Attention Mechanisms** | CoordAtt + SE + CBAM | SpatialAttention + CBAM |
 
+## 📊 Results & Metrics
+
+### Dataset Splits & Augmentation
+
+| Metric | FastViT Notebook | MobileViTv2 Notebook |
+|--------|-----------------|---------------------|
+| **Original Images** | 1,106 | 1,106 |
+| **Original Objects** | 3,981 | 3,981 |
+| **Augmented Train Files** | 5,466 | 5,096 |
+| **Validation Samples** | 164 | 164 |
+| **Test Samples** | 170 | 169 |
+
+### Training Configuration
+
+| Parameter | FastViT | MobileViTv2 |
+|-----------|---------|-------------|
+| **Epochs** | 200 | 200 |
+| **Batch Size** | 16 | 16 |
+| **Learning Rate** | 1e-4 | 1e-4 |
+| **Weight Decay** | 1e-4 | 1e-4 |
+| **Optimizer** | AdamW | AdamW |
+| **Loss Function** | Standard Faster R-CNN | Weighted Faster R-CNN |
+
+### Class Distribution & Weights
+
+| Class | Weight | Notes |
+|-------|--------|-------|
+| Background | 1.0 | Base weight |
+| Scratch | 1.0 / 1.56 | Rare class (MobileViTv2 boosted) |
+| Black Border | 1.0 / 1.55 | Rare class (MobileViTv2 boosted) |
+| No Electricity | 1.0 / 1.55 | Rare class (MobileViTv2 boosted) |
+| Hot Spot | 1.0 / 0.42 | Heavily overrepresented (downweighted) |
+| Broken | 1.0 / 1.40 | Rare class (MobileViTv2 boosted) |
+
+> **Note**: FastViT relies purely on data augmentation for class balance, while MobileViTv2 uses explicit class weighting in the loss function to handle severe class imbalance.
+
+### Expected Evaluation Metrics
+
+Both models report on test set:
+- **Precision** (per-class & overall)
+- **Recall** (per-class & overall)
+- **F1-Score** (per-class & overall)
+- **mAP@0.5** (mean Average Precision at IoU=0.5)
+- **Confusion Matrix** (class-wise predictions)
+
 ## 📂 Repository Structure
 
 ```
